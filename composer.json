@@ -1,5 +1,5 @@
 {
-    "name": "vib94/cas-authenticator",
+    "name": "vib94/cas-bundle",
     "description": "CAS authenticator guard for Symfony",
     "type": "symfony-bundle",
     "authors": [
