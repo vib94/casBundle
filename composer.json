@@ -1,0 +1,12 @@
+{
+    "name": "vib94/cas-authenticator",
+    "description": "CAS authenticator guard for Symfony",
+    "type": "symfony-bundle",
+    "authors": [
+        {
+            "name": "Vincent Baron",
+            "email": "xenvib@gmail.com"
+        }
+    ],
+    "require": {}
+}
