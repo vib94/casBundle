@@ -4,8 +4,7 @@
     "type": "symfony-bundle",
     "authors": [
         {
-            "name": "Vincent Baron",
-            "email": "xenvib@gmail.com"
+            "name": "Vincent Baron"
         }
     ],
     "require": {}
