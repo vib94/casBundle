@@ -1,0 +1,21 @@
+services:
+#    cas.example:
+#        class: Cas\CasBundle\Example
+#        arguments: ["@service_id", "plain_value", "%parameter%"]
+
+    cas.authenticator:
+        class: Vib94\CasBundle\Security\CasAuthenticator
+        arguments: ["@router", "@doctrine.orm.entity_manager", "%cas%"]
+
+#    AppBundle\Security\CasTokenAuthenticator:
+#        arguments:
+#            $token_storage: "@security.token_storage"
+#            $aut_checker: "@security.authorization_checker"
+#            $router: "@router"
+#            $em: "@doctrine.orm.entity_manager"
+#            $casHost: 'auth.ville-creteil.intra'
+#            $casPort: 80
+#            $context: '/cas'
+#            $validate: '/cas/serviceValidate'
+#            $debug: false
+#            $verif: false

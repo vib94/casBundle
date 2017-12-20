@@ -25,6 +25,8 @@ $ composer require vib94/cas-bundle
 Then, enable the bundle by adding it to the list of registered bundles
 in the `app/AppKernel.php` file of your project:
 
+$bundles[] = new Vib94\CasBundle\Vib94CasBundle();
+
 ```php
 <?php
 // app/AppKernel.php
