@@ -15,5 +15,5 @@
         "exclude-from-classmap": [
             "/Tests/"
         ]
-    },
+    }
 }
