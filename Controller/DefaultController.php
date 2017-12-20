@@ -22,7 +22,8 @@ class DefaultController extends Controller
         // ** if you want to *authenticate* the user, then
         // leave this method blank and create a Guard authenticator
         // (read below)
-
+echo 'connectceck';
+        exit;
         /** @var \KnpU\OAuth2ClientBundle\Client\Provider\FacebookClient $client */
         $client = $this->get('oauth2.registry')
             ->getClient('facebook_main');

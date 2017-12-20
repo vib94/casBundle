@@ -5,8 +5,10 @@ services:
 
     cas.authenticator:
         class: Vib94\CasBundle\Security\CasAuthenticator
-        arguments: ["@router", "@doctrine.orm.entity_manager", "%cas%"]
+        arguments: ["@security.token_storage", "@router", "@doctrine.orm.entity_manager", "%cas%"]
+        autowire: true
 
+    Vib94\CasBundle\Security\CasAuthenticator: '@cas.authenticator'
 #    AppBundle\Security\CasTokenAuthenticator:
 #        arguments:
 #            $token_storage: "@security.token_storage"

@@ -33,13 +33,13 @@ class CasAuthenticator extends AbstractGuardAuthenticator
 
     private $router;
 
-    public function __construct(Router $router, EntityManager $em, $cas_conf)
+    public function __construct($token_storage, Router $router, EntityManager $em, $cas_conf)
     {
         $this->em = $em;
         $this->router = $router;
 
         $this->casHost = $cas_conf['host'];
-        $this->casPort = $cas_conf['port'];
+        $this->casPort = array_key_exists('port', $cas_conf) ? $cas_conf['port'] : '';
         $this->casContext = $cas_conf['context'];
         $this->casValidate = $cas_conf['validate'];
         $this->casDebug = $cas_conf['debug'];
@@ -70,21 +70,26 @@ class CasAuthenticator extends AbstractGuardAuthenticator
      */
     public function getCredentials(Request $request)
     {
-        phpCAS::client($this->casVersion, $this->casHost, $this->casPort, $this->casContext, false, false);
-        phpCAS::setServerServiceValidateURL($this->casHost.$this->casValidate);
-        if(!$this->casVerif)
-            phpCAS::setNoCasServerValidation();
 
         //phpCAS::forceAuthentication();
-
+        $token = array();
+        phpCas::setDebug('/home/web/sites/symfonytest/debugcas.log');
         try 
         {
+            phpCAS::client($this->casVersion, $this->casHost, $this->casPort, $this->casContext, false, false);
+            phpCAS::setServerServiceValidateURL($this->casHost.$this->casValidate);
+            if(!$this->casVerif)
+                phpCAS::setNoCasServerValidation();
+
+            phpCAS::setNoClearTicketsFromUrl();
+
+            phpCAS::forceAuthentication();
             if(phpCAS::isAuthenticated())
             {
                 $user_login = phpCAS::getUser();
                 $attributes = phpCAS::getAttributes();
     
-                $token = array();
+                
                 $token['username'] = $user_login;
                 $token['attributes']  = $attributes;
                 $token['created']  = date('Y-m-d H:i:s');
@@ -109,7 +114,7 @@ class CasAuthenticator extends AbstractGuardAuthenticator
         if (!isset($token['username']) || is_null($token['username'])) {
             return;
         }
-
+        
         $attributes = $token['attributes'];
 
         $mail = array_key_exists('mail', $attributes) ? trim($attributes['mail']) : null;
@@ -118,14 +123,12 @@ class CasAuthenticator extends AbstractGuardAuthenticator
         $fname = array_pop($exploded);
         $lname = array_pop($exploded);
 
-
-/*
         try 
         {
             $return = $userProvider->loadUserByUsername($token['username']);
         } 
         catch (UsernameNotFoundException $e)
-        {
+        {/*
             $random = random_bytes(10);
             $entity = new User();
             $entity->setNotification(false);
@@ -140,11 +143,11 @@ class CasAuthenticator extends AbstractGuardAuthenticator
             $this->em->persist($entity);
             $this->em->flush($entity);
             
-            $return = $entity;
+            $return = $entity;*/
         }
-*/
+
         // if a User object, checkCredentials() is called
-        return $token;
+        return $return;
     }
 
     public function checkCredentials($credentials, UserInterface $user)

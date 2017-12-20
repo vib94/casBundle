@@ -7,7 +7,9 @@
             "name": "Vincent Baron"
         }
     ],
-    "require": {},
+    "require": {
+        "lexik/jwt-authentication-bundle": "^2.4"
+    },
     "autoload": {
         "psr-4": {
             "Vib94\\CasBundle\\": ""
