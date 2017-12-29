@@ -17,7 +17,7 @@ class DefaultController extends Controller
             ->redirect();
     }
 
-    public function connectCheckAction(Request $request)
+    public function connectCheckAction()
     {
         // ** if you want to *authenticate* the user, then
         // leave this method blank and create a Guard authenticator
@@ -41,5 +41,10 @@ echo 'connectceck';
             // probably you should return the reason to the user
             var_dump($e->getMessage());die;
         }
+    }
+
+    public function logoutAction()
+    {
+        throw new \RuntimeException('You must activate the logout in your security firewall configuration.');
     }
 }

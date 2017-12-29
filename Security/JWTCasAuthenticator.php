@@ -23,9 +23,21 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use phpCAS;
 use CAS_AuthenticationException;
 use Doctrine\ORM\EntityManager;
+use Lexik\Bundle\JWTAuthenticationBundle\Events;
 use AppBundle\Entity\User;
+use Lexik\Bundle\JWTAuthenticationBundle\Exception\MissingTokenException;
+use Lexik\Bundle\JWTAuthenticationBundle\Event\JWTNotFoundEvent;
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use Lexik\Bundle\JWTAuthenticationBundle\TokenExtractor\TokenExtractorInterface;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Lexik\Bundle\JWTAuthenticationBundle\Response\JWTAuthenticationFailureResponse;
+use Lexik\Bundle\JWTAuthenticationBundle\Response\JWTAuthenticationSuccessResponse;
+use Lexik\Bundle\JWTAuthenticationBundle\Event\AuthenticationSuccessEvent;
+use Symfony\Component\HttpFoundation\Session\Session;
+use Symfony\Component\HttpFoundation\Session\Storage\PhpBridgeSessionStorage;
 
-class CasAuthenticator extends AbstractGuardAuthenticator
+
+class JWTCasAuthenticator extends AbstractGuardAuthenticator
 {
 
     private $em;
@@ -42,11 +54,15 @@ class CasAuthenticator extends AbstractGuardAuthenticator
     private $casAutoRedirect;
 
     private $router;
+    private $jwtManager;
+    private $dispatcher;
 
-    public function __construct(Router $router, EntityManager $em, UserCreateInterface $userCreateProvider, $cas_conf)
+    public function __construct(JWTTokenManagerInterface $jwtManager, EventDispatcherInterface $dispatcher,Router $router, EntityManager $em, UserCreateInterface $userCreateProvider, $cas_conf)
     {
         $this->em = $em;
         $this->router = $router;
+        $this->jwtManager = $jwtManager;
+        $this->dispatcher = $dispatcher;
         $this->userCreateProvider = $userCreateProvider;
         $this->casHost = $cas_conf['host'];
         $this->casPort = array_key_exists('port', $cas_conf) ? $cas_conf['port'] : '';
@@ -75,7 +91,8 @@ class CasAuthenticator extends AbstractGuardAuthenticator
 
        return true;
 
-    }    
+    }
+
     /**
      * Called on every request. Return whatever credentials you want to
      * be passed to getUser(). Returning null will cause this authenticator
@@ -87,17 +104,28 @@ class CasAuthenticator extends AbstractGuardAuthenticator
         //phpCAS::forceAuthentication();
         $token = array();
         ob_start();
+
         //phpCas::setDebug('/home/web/sites/symfonytest/debugcas.log');
         phpCas::setVerbose(false);
         try
         {
             phpCAS::client($this->casVersion, $this->casHost, $this->casPort, $this->casContext, false, false);
+           //phpCas::renewAuthentication();
             phpCAS::setServerServiceValidateURL($this->casHost.$this->casValidate);
             if(!$this->casVerif)
                 phpCAS::setNoCasServerValidation();
 
             phpCAS::setNoClearTicketsFromUrl();
-            phpCAS::forceAuthentication();
+            //phpCAS::forceAuthentication();
+
+            //$session = new Session(new PhpBridgeSessionStorage());
+            
+            $session = $request->getSession();
+            //$session->start();
+            $session_params = $session->all();
+            $session->invalidate();
+            //print_r($_SESSION);
+            //print_r($session_params);
 
             if(phpCAS::isAuthenticated())
             {
@@ -115,11 +143,10 @@ class CasAuthenticator extends AbstractGuardAuthenticator
         {
             $contents = ob_get_contents();
             ob_clean();
-            echo 'bolosserie';
             return false;
         }
 
-        ob_clean();
+        //ob_clean();
 
         // What you return here will be passed to getUser() as $credentials
         return array(
@@ -163,10 +190,9 @@ class CasAuthenticator extends AbstractGuardAuthenticator
 
     public function onAuthenticationSuccess(Request $request, TokenInterface $token, $providerKey)
     {
-/*
-        if (null === $jwt) {
-            $jwt = $this->jwtManager->create($user);
-        }
+
+        $user = $token->getUser();
+        $jwt = $this->jwtManager->create($user);
 
         $response = new JWTAuthenticationSuccessResponse($jwt);
         $event    = new AuthenticationSuccessEvent(['token' => $jwt], $user, $response);
@@ -175,36 +201,16 @@ class CasAuthenticator extends AbstractGuardAuthenticator
         $response->setData($event->getData());
 
         return $response;
-*/
-        $url = $this->router->generate($this->targetPath);
-        $response = new RedirectResponse($url);
-        /*
-        $usernametoswitch = $request->query->get('_switch_user');
-        if (!empty($usernametoswitch)) {
 
-            $roles[] = new SwitchUserRole('ROLE_PREVIOUS_ADMIN', $token);
-
-            $token = array();
-            $token['username'] = $usernametoswitch;
-            $token['attributes']  = array();
-            $token['created']  = date('Y-m-d H:i:s');
-
-            return array(
-                'token' => $token,
-            );           
-        }*/
-        // on success, let the request continue
-        return $response;
     }
 
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception)
     {
 
         $request->getSession()->set(Security::AUTHENTICATION_ERROR, $exception);
-        $url = $this->router->generate($this->targetPathFailure);
-        $response = new RedirectResponse($url);
-        
-        //return new JsonResponse($data, Response::HTTP_FORBIDDEN);
+        ///$url = $this->router->generate($this->targetPathFailure);
+        //$response = new RedirectResponse($url);
+        return new JsonResponse($exception->getMessageKey(), Response::HTTP_FORBIDDEN);
     }
 
     /**
@@ -213,7 +219,7 @@ class CasAuthenticator extends AbstractGuardAuthenticator
     public function start(Request $request, AuthenticationException $authException = null)
     {
         $url = 'https://' . $this->casHost;
-        if ($this->casPort!=443) {
+        if ($this->casPort != 443) {
             $url .= ':'.$this->casPort;
         }
         $url .= $this->casContext;
@@ -223,9 +229,17 @@ class CasAuthenticator extends AbstractGuardAuthenticator
         $url .= urlencode($service_url);
         $data = array('message' => 'Authentication Required');
         $response = new RedirectResponse($url);
-        if($this->casAutoRedirect)
-            return $response;
-        
+
+        $exception = new MissingTokenException('JWT Token not found 2', 0, $authException);
+        $event     = new JWTNotFoundEvent($exception, new JWTAuthenticationFailureResponse($exception->getMessageKey()));
+
+        $this->dispatcher->dispatch(Events::JWT_NOT_FOUND, $event);
+
+        //if($this->casAutoRedirect)
+            //return $response;
+        //else
+            return $event->getResponse();
+
         return;
     }
 

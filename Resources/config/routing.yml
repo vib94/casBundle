@@ -5,3 +5,7 @@ cas_connect:
 cas_connect_check:
     path:     /connect_check
     defaults: { _controller: Vib94CasBundle:Default:connectCheck }
+
+cas_logout:
+    path:     /logout
+    defaults: { _controller: Vib94CasBundle:Default:logout }    

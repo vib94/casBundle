@@ -3,12 +3,30 @@ services:
 #        class: Cas\CasBundle\Example
 #        arguments: ["@service_id", "plain_value", "%parameter%"]
 
+    cas.usercreatefos:
+        class: Vib94\CasBundle\Security\User\UserCreateFos
+        arguments: ["@doctrine.orm.entity_manager"]
+        autowire: true
+
     cas.authenticator:
         class: Vib94\CasBundle\Security\CasAuthenticator
-        arguments: ["@security.token_storage", "@router", "@doctrine.orm.entity_manager", "%cas%"]
+        arguments: ["@router", "@doctrine.orm.entity_manager", "@cas.usercreatefos", "%cas%"]
+        autowire: true
+
+    cas.jwtauthenticator:
+        class: Vib94\CasBundle\Security\JWTCasAuthenticator
+        arguments: ["@lexik_jwt_authentication.jwt_manager", "@event_dispatcher", "@router", "@doctrine.orm.entity_manager", "@cas.usercreatefos", "%cas%"]
+        autowire: true
+
+    cas.logout:
+        class: Vib94\CasBundle\Security\Handler\Logout
+        arguments: ["%cas%"]
         autowire: true
 
     Vib94\CasBundle\Security\CasAuthenticator: '@cas.authenticator'
+    Vib94\CasBundle\Security\JWTCasAuthenticator: '@cas.jwtauthenticator'
+    Vib94\CasBundle\Security\User\UserCreateFos: '@cas.usercreatefos'
+    Vib94\CasBundle\Security\Handler\Logout: '@cas.logout'
 #    AppBundle\Security\CasTokenAuthenticator:
 #        arguments:
 #            $token_storage: "@security.token_storage"
